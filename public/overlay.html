@@ -1,1 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TikTok Overlay</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    color: white;
+    background: transparent;
+    overflow: hidden;
+}
 
+#chat {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    left: 0;
+    padding: 10px;
+    font-size: 22px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 6px;
+}
+
+.msg {
+    background: rgba(0,0,0,0.4);
+    padding: 6px 10px;
+    border-radius: 6px;
+    animation: fadein 0.3s ease;
+}
+
+@keyframes fadein {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+
+<body>
+<div id="chat"></div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const socket = io();
+
+socket.on("chat", data => {
+    const chatBox = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `<b>${data.user}</b>: ${data.message}`;
+    chatBox.prepend(div);
+});
+
+socket.on("gift", data => {
+    const chatBox = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `🎁 <b>${data.user}</b> sent a gift (${data.gift})`;
+    chatBox.prepend(div);
+});
+</script>
+</body>
+</html>
