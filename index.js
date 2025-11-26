@@ -6,20 +6,33 @@ const { TikTokLiveConnection, WebcastEvent } = require("tiktok-live-connector");
 
 // === CONFIG ===
 const username = "zhaelee"; // <-- change to streamer username
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Railway sets this dynamically
 
-// Express + Socket.io server
+// === EXPRESS + SOCKET.IO SERVER ===
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Setup Socket.IO with CORS
+const io = new Server(server, {
+    cors: {
+        origin: "*", // allow your overlay page to connect
+        methods: ["GET", "POST"]
+    },
+    transports: ["websocket", "polling"]
+});
 
 // Serve overlay files
 app.use(express.static("public"));
 
-// Start server
-server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+// Basic test route
+app.get("/", (req, res) => {
+    res.send("TikTok Overlay Server Running!");
+});
 
-// TikTok LIVE connection
+// Start server
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// === TIKTOK LIVE CONNECTION ===
 const tiktok = new TikTokLiveConnection(username, {
     requestOptions: {
         headers: {
@@ -28,33 +41,51 @@ const tiktok = new TikTokLiveConnection(username, {
         }
     },
     disableEulerFallbacks: true,
-    disableSignRequests: false // fallback if errors persist
+    disableSignRequests: false
 });
 
-// Connect with auto-retry
+// Auto-retry connect
 async function connectTikTok() {
     try {
         const state = await tiktok.connect();
         console.log("Connected to room:", state.roomId);
     } catch (err) {
-        console.log("Connection error:", err);
+        console.error("TikTok Connection error:", err);
         console.log("Retrying in 5s...");
         setTimeout(connectTikTok, 5000);
     }
 }
 connectTikTok();
 
-// Listen to chat
+// === CHAT EVENTS ===
 tiktok.on(WebcastEvent.CHAT, data => {
     const msg = `${data.user.uniqueId}: ${data.comment}`;
     console.log("[CHAT]", msg);
-    io.emit("chat", { user: data.user.nickname, message: data.comment });
-    fs.appendFileSync("chat.txt", msg + "\n"); // save to file
+
+    // Emit to overlay via Socket.IO
+    io.emit("chat", {
+        user: data.user.nickname,
+        message: data.comment
+    });
+
+    // Save to file
+    try {
+        fs.appendFileSync("chat.txt", msg + "\n");
+    } catch (err) {
+        console.error("Failed to save chat:", err);
+    }
 });
 
-// Listen to gifts
+// === GIFT EVENTS ===
 tiktok.on(WebcastEvent.GIFT, data => {
     const msg = `${data.user.uniqueId} sent gift ${data.giftId}`;
     console.log("[GIFT]", msg);
-    io.emit("gift", { user: data.user.nickname, gift: data.giftId });
+
+    // Emit to overlay
+    io.emit("gift", {
+        user: data.user.nickname,
+        gift: data.giftId
+    });
+
+    // OPTIONAL: trigger 3D animation on frontend via "gift" event
 });
