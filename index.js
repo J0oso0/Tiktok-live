@@ -5,7 +5,7 @@ const fs = require("fs");
 const { TikTokLiveConnection, WebcastEvent } = require("tiktok-live-connector");
 
 // === CONFIG ===
-const username = "mcdono.1lover"; // <-- change to streamer username
+const username = "zhaelee"; // <-- change to streamer username
 const PORT = 3000;
 
 // Express + Socket.io server
